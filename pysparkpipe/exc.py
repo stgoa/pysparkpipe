@@ -67,8 +67,8 @@ class LayersConsistencyError(PySparkPipeBaseException, NameError):
 
 
 class InputLayerMissingGroupingColsError(PySparkPipeBaseException, NameError):
-    msg_template = "The new layer: `{layer_name}` is not consistent: grouping columns: {grouping_cols} must be subset of the schema columns: {schema}"
+    msg_template = "The new layer: `{layer_name}` is not consistent: grouping columns: `{grouping_cols}` must be subset of the schema columns: `{schema}`"
 
 
 class PipelineCompileError(PySparkPipeBaseException, NameError):
-    msg_template = "The pipeline can't be compiled: {msg}"
+    msg_template = "The pipeline can't be compiled: `{msg}`"
