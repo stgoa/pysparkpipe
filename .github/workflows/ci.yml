@@ -15,5 +15,5 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Install dependencies and Run Tests
+      - name: Install dependencies and run tests
         run: docker build --target tester .
