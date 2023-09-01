@@ -18,5 +18,5 @@ RUN pytest -s -vvv
 FROM base AS publisher
 ARG PYPI_TOKEN
 RUN poetry build
-RUN config pypi-token.pypi ${PYPI_TOKEN}
+RUN poetry config pypi-token.pypi ${PYPI_TOKEN}
 RUN poetry publish
