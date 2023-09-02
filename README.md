@@ -3,33 +3,25 @@
 **PySparkPipe** is a Python library designed to simplify the development of data pipelines within the PySpark framework. It provides a powerful and intuitive way to apply a sequence of transformations over grouped data within the context of [pyspark.sql.GroupedData.applyInPandas](https://spark.apache.org/docs/3.2.1/api/python/reference/api/pyspark.sql.GroupedData.applyInPandas.html)
 
 # Why PySparkPipe?
-Developing data pipelines within the PySpark framework can be a complex and time-consuming task. PySpark is a powerful tool for distributed data processing, but building robust, maintainable pipelines often involves writing intricate code for data transformations, validation, and orchestration.
-
 Here are some reasons why PySparkPipe is a valuable addition to your data engineering/science toolkit:
 
-1. Streamlined Pipeline Development
-PySparkPipe simplifies the process of building data pipelines by providing a high-level API for defining and executing sequences of transformations. This library reduces the need for boilerplate code, making your pipeline development more efficient and maintainable.
+1. Grouped data transformation in a single reshuffle.
+    In the realm of large-scale ETL pipelines, transitioning to PySpark for distributed data processing is crucial for scalability. However, complex transformations involving grouping often lead to performance bottlenecks due to data shuffling. This is where PySparkPipe becomes indispensable. It provides a structured and efficient way to define your custom transformations for each group while ensuring minimal data shuffling—avoiding the significant data shuffling that can hinder performance and scalability when transformations are applied individually within each group. You can model each transformation step using PySparkPipe's Layers, maintaining the modularity and clarity of your code. When it's time to execute the pipeline, PySparkPipe intelligently combines these steps into a single reshuffling operation, optimizing data flow across the cluster. This reduces the computational overhead and network traffic associated with multiple shuffles, resulting in significantly faster ETL processing.
 
-2. Grouped Data Transformation
-Many data processing tasks involve grouping data based on specific criteria and then applying transformations within these groups. PySparkPipe's "apply_in_spark" method is specifically designed for such scenarios, making it easier to handle complex grouped data transformations.
-One key advantage of PySparkPipe is its ability to optimize data shuffling and reduce the number of reshuffling tasks. By minimizing unnecessary data movement across the cluster, your PySpark jobs run more efficiently and with improved performance. This is especially crucial when dealing with large datasets, as it reduces the computational overhead and network traffic associated with reshuffling.
-Additionally, PySparkPipe's intelligent grouping and transformation mechanism intelligently partitions data and leverages Spark's built-in optimizations, such as predicate pushdown and data co-location, to further enhance performance.
-By using PySparkPipe, you not only simplify your grouped data transformations but also ensure that they run with optimal efficiency, making it a valuable tool for big data processing pipelines.
+2. Consistency and validation.
+    The Layer class in PySparkPipe ensures that each intermediate transformation within your pipeline is validated for consistency. This means you can catch data issues early in the pipeline, reducing the risk of downstream errors and enhancing the quality of your data.
 
-3. Consistency and Validation
-The Layer class in PySparkPipe ensures that each intermediate transformation within your pipeline is validated for consistency. This means you can catch data issues early in the pipeline, reducing the risk of downstream errors and enhancing the quality of your data.
+3. Integration with PySpark and Pandas.
+    PySparkPipe gives you the flexibility to choose between PySpark and pandas for your data transformations. Whether you need the scalability of PySpark or the convenience of pandas, you can seamlessly switch between them within your pipeline.
 
-4. Integration with PySpark and Pandas
-PySparkPipe gives you the flexibility to choose between PySpark and pandas for your data transformations. Whether you need the scalability of PySpark or the convenience of pandas, you can seamlessly switch between them within your pipeline.
+4. Scalability.
+    Leveraging the power of PySpark, PySparkPipe can handle large-scale data processing tasks, making it suitable for big data applications.
 
-5. Scalability
-Leveraging the power of PySpark, PySparkPipe can handle large-scale data processing tasks, making it suitable for big data applications.
+5. Community and contribution.
+    y using PySparkPipe, you join a community of data engineers and developers who can contribute to the library's growth and improvement. We welcome contributions and value the collective knowledge and experience of the community.
 
-6. Community and Contribution
-By using PySparkPipe, you join a community of data engineers and developers who can contribute to the library's growth and improvement. We welcome contributions and value the collective knowledge and experience of the community.
-
-7. Simplified Maintenance
-With a well-structured pipeline and clear separation of transformation layers, PySparkPipe makes pipeline maintenance and troubleshooting more straightforward. This reduces the long-term effort required to maintain your data processing workflows.
+6. Simplified maintenance.
+    With a well-structured pipeline and clear separation of transformation layers, PySparkPipe makes pipeline maintenance and troubleshooting more straightforward. This reduces the long-term effort required to maintain your data processing workflows.
 
 # Installation
 
