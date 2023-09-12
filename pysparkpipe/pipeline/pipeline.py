@@ -40,6 +40,7 @@ class Pipeline:
             exception_handler (callable, optional): Exception handler to be used by the pipeline. Defaults to None. If passed, the pipeline
                 will call the exception_handler with the dataframe and the exception as arguments. The exception_handler should return a dataframe.
                 with the same schema as the output schema of the pipeline. If the exception_handler is not passed, the pipeline will raise the exception.
+                NOTE: exception_handler(e: Exception, df: PandasDataFrame) -> PandasDataFrame will not be typechecked.
 
         Raises:
             ValueError: If grouping_cols is not a list of strings.
