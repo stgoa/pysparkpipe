@@ -409,3 +409,168 @@ def test_cogroup_apply_in_spark(spark: SparkSession = None):
     # assert that the pipeline fails if the input is not a spark dataframe
     with pytest.raises(PipelineCompileError):
         pipe.apply_in_spark(df=df1, df2=None)
+
+
+def test_pipeline_raises_no_exception_handler():
+    # case 1: exception handler is not passed
+    pipe = Pipeline(
+        grouping_cols=["col1"],
+        validate_inputs=True,
+        validate_outputs=True,
+    )
+
+    schema = DataFrameSchema(
+        {
+            "col1": Column(float, nullable=False, coerce=True),
+        }
+    )
+
+    # input data
+    df = pd.DataFrame(data={"col1": ["2"]})
+
+    # transformation applied in each layer
+    def transform(x):
+        x["col1"] = x["col1"] * 2.0
+        if x["col1"].iloc[0] == 2.0**11.0:
+            raise ValueError("This is a test exception")
+        return x
+
+    for _ in range(10):
+        pipe.add(transform, schema, schema)
+
+    # assert that the pipeline raises the exception, since no exception handler is passed
+    with pytest.raises(ValueError):
+        pipe.fit(df)
+
+
+def test_pipeline_exception_handler():
+    # case 2: exception handler passed
+
+    schema = DataFrameSchema(
+        {
+            "col1": Column(float, nullable=True, coerce=True),
+            "msg": Column(str, nullable=True, coerce=True),
+        }
+    )
+
+    # expected data after the pipeline
+    df_expected = pd.DataFrame(
+        data={"col1": [np.nan], "msg": ["This is a test exception"]}
+    )
+
+    # define the exception handler
+    def exception_handler(e, df):
+        df["col1"] = np.nan
+        df["msg"] = str(e)
+        return df
+
+    pipe = Pipeline(
+        grouping_cols=["col1"],
+        validate_inputs=True,
+        validate_outputs=True,
+        exception_handler=exception_handler,
+    )
+
+    # input data
+    df = pd.DataFrame(data={"col1": ["2"]})
+
+    # transformation applied in each layer
+    def transform(x):
+        x["col1"] = x["col1"] * 2.0
+        if x["col1"].iloc[0] == 2.0**11.0:
+            raise ValueError("This is a test exception")
+        return x
+
+    for _ in range(10):
+        pipe.add(transform, schema, schema)
+
+    # assert that output is as expected
+    df_output = pipe.fit(df)
+
+    pd.testing.assert_frame_equal(df_output, df_expected)
+
+
+def test_pipeline_exception_handler_in_apply_in_spark(
+    spark: SparkSession = None,
+):
+    if not spark:
+        spark = (
+            SparkSession.builder.master("local[2]")
+            .appName("pysparkpipe-test")
+            .getOrCreate()
+        )
+
+    schema_in = DataFrameSchema(
+        {
+            "col1": Column(str, nullable=False, coerce=True),
+            "col2": Column(float, nullable=False, coerce=True),
+        }
+    )
+    schema_out = DataFrameSchema(
+        {
+            "col1": Column(str, nullable=False, coerce=True),
+            "col2": Column(float, nullable=True, coerce=True),
+            "msg": Column(str, nullable=True, coerce=True),
+        }
+    )
+
+    # input data
+    df = pd.DataFrame(
+        data={"col1": [1, 1, "2", "2", "3", "3"], "col2": [0, 1, 0, 2, 0, 3]}
+    )
+    df = create_spark_dataframe_using_pandera_model(schema_in, spark, df)
+
+    # expected data after the pipeline
+    df_expected = pd.DataFrame(
+        data={
+            "col1": ["1", "2", "3"],
+            "col2": np.asarray([2.0**10.0, np.nan, 3.0 * 2.0**10.0]),
+            "msg": [
+                "some message",
+                "This is a test exception",
+                "some message",
+            ],
+        }
+    )
+
+    # transformation applied in each layer
+    def transform_max(x):
+        col1 = [x["col1"].iloc[0]]
+        col2 = [np.max(x["col2"])]
+        return pd.DataFrame({"col1": col1, "col2": col2})
+
+    def transform_mult(x):
+        x["col2"] = x["col2"] * 2.0
+        return x
+
+    def transform_add_msg(x):
+        x["msg"] = "some message"
+        if x["col1"].iloc[0] == "2":
+            raise ValueError("This is a test exception")
+        return x
+
+    # define the exception handler
+    def exception_handler(e, df):
+        df_exc = pd.DataFrame(
+            {"col1": [df["col1"].iloc[0]], "col2": [np.nan], "msg": [str(e)]}
+        )
+        return df_exc
+
+    pipe = Pipeline(
+        grouping_cols=["col1"],
+        validate_inputs=True,
+        validate_outputs=True,
+        exception_handler=exception_handler,
+    )
+
+    # add layers
+    pipe.add(transform_max, schema_in, schema_in)
+    for _ in range(10):
+        pipe.add(transform_mult, schema_in, schema_in)
+    pipe.add(transform_add_msg, schema_in, schema_out)
+
+    # compute output
+    df_output = pipe.apply_in_spark(df).toPandas()
+
+    # assert that output is as expected
+    pd.testing.assert_frame_equal(df_output, df_expected)
