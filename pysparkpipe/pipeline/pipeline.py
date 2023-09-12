@@ -14,7 +14,10 @@ from pysparkpipe.exc import (
     PipelineCompileError,
 )
 from pysparkpipe.pipeline.layers import Layer
-from pysparkpipe.pipeline.utils import pandera_model_to_spark_structype
+from pysparkpipe.pipeline.utils import (
+    pandera_model_to_spark_structype,
+    parse_dataframe_using_pandera_model,
+)
 
 
 class Pipeline:
@@ -26,6 +29,7 @@ class Pipeline:
         grouping_cols: List[str],
         validate_inputs: bool = True,
         validate_outputs: bool = True,
+        exception_handler: Optional[callable] = None,
     ) -> None:
         """Pipeline constructor.
 
@@ -33,6 +37,9 @@ class Pipeline:
             grouping_cols (List[str]): List of grouping columns.
             validate_inputs (bool, optional): If True, by default the inner Layers will validate the input dataframes. Defaults to True.
             validate_outputs (bool, optional): If True, by defualt the inner Layers will validate the output dataframes. Defaults to True.
+            exception_handler (callable, optional): Exception handler to be used by the pipeline. Defaults to None. If passed, the pipeline
+                will call the exception_handler with the dataframe and the exception as arguments. The exception_handler should return a dataframe.
+                with the same schema as the output schema of the pipeline. If the exception_handler is not passed, the pipeline will raise the exception.
 
         Raises:
             ValueError: If grouping_cols is not a list of strings.
@@ -44,6 +51,7 @@ class Pipeline:
         self.layers = []  # type: List[Layer]
         self.validate_inputs = validate_inputs  # type: bool
         self.validate_outputs = validate_outputs  # type: bool
+        self._exception_handler = exception_handler  # type: Optional[callable]
 
     def add_layer(
         self,
@@ -142,13 +150,44 @@ class Pipeline:
             return None
         return self.layers[-1].output_schema
 
+    def exception_handler(
+        self, e: Exception, df: PandasDataFrame
+    ) -> PandasDataFrame:
+        """Exception handler of the pipeline.
+
+        Args:
+            e (Exception): Exception raised by the pipeline.
+            df (DataFrame): Input DataFrame that caused the exception.
+
+        Returns:
+            DataFrame: DataFrame with the exception handler applied. The DataFrame must have the same schema as the output schema of the pipeline.
+
+        Raises:
+            Exception: If the exception handler does not return a DataFrame with the same schema as the output schema of the pipeline or
+                if the exception handler is not passed and the pipeline raises an exception.
+        """
+        if self._exception_handler is not None:
+            # call the exception handler
+            df_exc = self._exception_handler(e, df)
+            # validate the output of the exception handler
+            df_exc = parse_dataframe_using_pandera_model(
+                self.output_schema, df_exc
+            )
+            return df_exc
+        else:
+            raise e
+
     def fit(
         self, df: Union[PandasDataFrame, List[PandasDataFrame]]
     ) -> PandasDataFrame:
         """Fit the pipeline to the data. Apply all layers to the data to a single group."""
-        for layer in self.layers:
-            df = layer.transform(df)
-        return df
+        _df = df.copy()
+        try:
+            for layer in self.layers:
+                _df = layer.transform(_df)
+        except Exception as e:
+            return self.exception_handler(e, df)  # type: PandasDataFrame
+        return _df
 
     @typechecked
     def apply_in_pandas(self, df: PandasDataFrame) -> PandasDataFrame:
