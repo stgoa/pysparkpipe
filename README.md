@@ -23,6 +23,25 @@ Here are some reasons why PySparkPipe is a valuable addition to your data engine
 6. Simplified maintenance.
     With a well-structured pipeline and clear separation of transformation layers, PySparkPipe makes pipeline maintenance and troubleshooting more straightforward. This reduces the long-term effort required to maintain your data processing workflows.
 
+
+## Efficient Grouped Data Transformation in a Single Reshuffle
+
+Performing Python transformations separately can often lead to performance bottlenecks, primarily due to the overhead of data shuffling.
+
+<p align="center">
+<img src="https://lucid.app/publicSegments/view/a46f39f2-0d78-469e-bcfc-7e668d9676a4/image.png" alt="pysparkpipe-sequential" style="width:1200px;"/>
+</p>
+
+However, with PySparkPipe, you ensure that each partition group is processed within the same core, eliminating unnecessary data shuffling and significantly improving overall efficiency.
+
+<p align="center">
+<img src="https://lucid.app/publicSegments/view/6ee4f386-a66b-4183-ad71-4b38d46c5227/image.png" alt="pysparkpipe-parallel" style="width:1200px;"/>
+</p>
+
+PySparkPipe streamlines your data processing workflows, allowing you to harness the full potential of distributed computing without sacrificing performance.
+
+
+
 # Installation
 
 This project uses:
