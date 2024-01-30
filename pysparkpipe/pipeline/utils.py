@@ -42,6 +42,7 @@ def create_spark_dataframe_using_pandera_model(
     """It converts the input into a spark dataframe following the class schema. Accept dictionaries, lists or dataframes as input.
 
     Args:
+        cls (DataFrameSchema): Pandera class schema
         spark (SparkSession): SparkSession
         df (Union[pd.DataFrame,Dict, List[Dict]]): Input data
 
@@ -69,6 +70,7 @@ def parse_dataframe_from_dict(
     to the schema.
 
     Args:
+        cls (DataFrameSchema): Pandera class schema
         data (Union[List[Dict], Dict]): Dict, List of Dicts, or actually whatever
         input pd.DataFrame wouldn't sneeze at. In extra kwargs are required for
         compatibility, bring on the extra arguments, not gonna cry about that.
@@ -89,6 +91,7 @@ def parse_dataframe_using_pandera_model(
     according to schema typing. Includes a validation
 
     Args:
+        cls (DataFrameSchema): Pandera class schema
         df (pd.DataFrame): pandas DataFrame
 
     Returns:
@@ -112,6 +115,7 @@ def pandera_model_to_spark_structype(
     Returns spark StructType with schema or corresponding Pandera schema.
 
     Args:
+        cls (DataFrameSchema): Pandera class schema
         df_cols (Optional[List[str]], optional): List of DataFrame col names of corresponding schema,
         useful for returning StructType with a particular column order.
         Defaults to None. If None, uses default schema column ordering.
