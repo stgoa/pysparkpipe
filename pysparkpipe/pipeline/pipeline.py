@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Spark applyInPandas Pipeline class"""
 
+import logging
 from typing import List, Optional, Union
 
 from pandas import DataFrame as PandasDataFrame
@@ -18,6 +19,20 @@ from pysparkpipe.pipeline.utils import (
     pandera_model_to_spark_structype,
     parse_dataframe_using_pandera_model,
 )
+
+logger = logging.getLogger(__name__)
+
+try:
+    import matplotlib.pyplot as plt
+    import networkx as nx
+
+    DAG_PLOT_AVAILABLE = True
+
+except ImportError:
+    DAG_PLOT_AVAILABLE = False
+    logger.warning(
+        "networkx and matplotlib are not installed. DAG plotting is not available."
+    )
 
 
 class Pipeline:
@@ -244,3 +259,19 @@ class Pipeline:
             to_apply,
             schema=pandera_model_to_spark_structype(self.output_schema),
         )
+
+    def __repr__(self) -> str:
+        if DAG_PLOT_AVAILABLE:
+            dag = nx.DiGraph()
+            for layer in self.layers:
+                dag.add_node(layer.name)
+                inputs = (
+                    layer.input_schema
+                    if isinstance(layer.input_schema, list)
+                    else [layer.input_schema]
+                )
+                for input_schema in inputs:
+                    dag.add_edge(input_schema.name, layer.name)
+
+            return self.plot()
+        return super().__repr__()
