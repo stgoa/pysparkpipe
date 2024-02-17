@@ -22,21 +22,11 @@ from pysparkpipe.pipeline.utils import (
 
 logger = logging.getLogger(__name__)
 
-try:
-    import matplotlib.pyplot as plt
-    import networkx as nx
-
-    DAG_PLOT_AVAILABLE = True
-
-except ImportError:
-    DAG_PLOT_AVAILABLE = False
-    logger.warning(
-        "networkx and matplotlib are not installed. DAG plotting is not available."
-    )
-
-
 class Pipeline:
     """Pipeline class. A pipeline is a sequence of layers that are applied to the data grouped by the grouping columns."""
+
+    PRINT_MAX_COLS = 50
+    PRINT_MAX_ROWS = 50
 
     @typechecked
     def __init__(
@@ -261,17 +251,16 @@ class Pipeline:
         )
 
     def __repr__(self) -> str:
-        if DAG_PLOT_AVAILABLE:
-            dag = nx.DiGraph()
-            for layer in self.layers:
-                dag.add_node(layer.name)
-                inputs = (
-                    layer.input_schema
-                    if isinstance(layer.input_schema, list)
-                    else [layer.input_schema]
-                )
-                for input_schema in inputs:
-                    dag.add_edge(input_schema.name, layer.name)
+        rep = ""
+        for layer in self.layers:
+            rep += "\n------------\n"
+            inputs = (
+                layer.input_schema
+                if isinstance(layer.input_schema, list)
+                else [layer.input_schema]
+            )
+            rep += " | ".join(map(lambda x : x.__name__, inputs))
+            rep += "\n------------\n"
+                
 
-            return self.plot()
-        return super().__repr__()
+        return rep
