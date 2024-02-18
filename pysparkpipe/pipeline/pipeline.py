@@ -252,15 +252,15 @@ class Pipeline:
 
     def __repr__(self) -> str:
         rep = ""
-        for layer in self.layers:
-            rep += "\n------------\n"
-            inputs = (
-                layer.input_schema
-                if isinstance(layer.input_schema, list)
-                else [layer.input_schema]
-            )
-            rep += " | ".join(map(lambda x : x.__name__, inputs))
-            rep += "\n------------\n"
+        # for layer in self.layers:
+        #     rep += "\n------------\n"
+        #     inputs = (
+        #         layer.input_schema
+        #         if isinstance(layer.input_schema, list)
+        #         else [layer.input_schema]
+        #     )
+        #     rep += " | ".join(map(lambda x : x.__name__, inputs))
+        #     rep += "\n------------\n"
                 
 
         return rep
