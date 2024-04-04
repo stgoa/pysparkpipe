@@ -766,3 +766,37 @@ def test_pipeline_exception_handler_in_apply_in_spark_timeout(
 
     # assert that output is as expected
     pd.testing.assert_frame_equal(df_output, df_expected)
+
+
+def test_pipeline_repr():
+    pipe = Pipeline(
+        grouping_cols=["col1"],
+        validate_inputs=True,
+        validate_outputs=True,
+    )
+
+    schema = DataFrameSchema(
+        {
+            "col1": Column(float, nullable=False, coerce=True),
+        }
+    )
+
+    def transform(x):
+        return x
+
+    pipe.add(transform, schema, schema)
+
+    representation_lines_fragments = [
+        "PySparkPipe Pipeline",
+        "Layer: transform",
+        "Input Schema:",
+        "Output Schema:",
+        "Transform: <bound method Layer.transform",
+        "Validate Input: True",
+        "Validate Output: True",
+    ]
+
+    representation = pipe.__repr__()
+
+    for fragment in representation_lines_fragments:
+        assert fragment in representation
