@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Spark applyInPandas Pipeline class"""
 
+import concurrent.futures
 import logging
 from typing import List, Optional, Union
 
@@ -8,8 +9,6 @@ from pandas import DataFrame as PandasDataFrame
 from pandera import DataFrameSchema
 from pyspark.sql import DataFrame as SparkDataFrame
 from typeguard import typechecked
-
-import concurrent.futures
 
 from pysparkpipe.exc import (
     InputLayerMissingGroupingColsError,
@@ -24,11 +23,9 @@ from pysparkpipe.pipeline.utils import (
 
 logger = logging.getLogger(__name__)
 
+
 class Pipeline:
     """Pipeline class. A pipeline is a sequence of layers that are applied to the data grouped by the grouping columns."""
-
-    PRINT_MAX_COLS = 50
-    PRINT_MAX_ROWS = 50
 
     @typechecked
     def __init__(
@@ -196,19 +193,20 @@ class Pipeline:
         for layer in self.layers:
             _df = layer.transform(_df)
         return _df
-    
+
     def fit(
-            self, df: Union[PandasDataFrame, List[PandasDataFrame]]
+        self, df: Union[PandasDataFrame, List[PandasDataFrame]]
     ) -> PandasDataFrame:
         """Fit the pipeline to the data. Apply all layers to the data to a single group with an optional timeout."""
         try:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(self._apply_layers, df)
-                result = future.result(timeout=self.timeout)  # Set the timeout here (in seconds)
+                result = future.result(
+                    timeout=self.timeout
+                )  # Set the timeout here (in seconds)
             return result
         except Exception as e:
             return self.exception_handler(e, df)
-
 
     @typechecked
     def apply_in_pandas(self, df: PandasDataFrame) -> PandasDataFrame:
@@ -266,16 +264,14 @@ class Pipeline:
         )
 
     def __repr__(self) -> str:
-        rep = ""
-        # for layer in self.layers:
-        #     rep += "\n------------\n"
-        #     inputs = (
-        #         layer.input_schema
-        #         if isinstance(layer.input_schema, list)
-        #         else [layer.input_schema]
-        #     )
-        #     rep += " | ".join(map(lambda x : x.__name__, inputs))
-        #     rep += "\n------------\n"
-                
+        rep = "PySparkPipe Pipeline\n"
+        for layer in self.layers:
+            rep += f"Layer: {layer.name}\n"
+            rep += f"Input Schema: {layer.input_schema}\n"
+            rep += f"Output Schema: {layer.output_schema}\n"
+            rep += f"Transform: {layer.transform}\n"
+            rep += f"Validate Input: {layer.validate_input}\n"
+            rep += f"Validate Output: {layer.validate_output}\n"
+            rep += "\n"
 
         return rep
