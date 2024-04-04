@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Spark applyInPandas Pipeline class"""
 
+import concurrent.futures
+import logging
 from typing import List, Optional, Union
 
 from pandas import DataFrame as PandasDataFrame
@@ -19,6 +21,8 @@ from pysparkpipe.pipeline.utils import (
     parse_dataframe_using_pandera_model,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class Pipeline:
     """Pipeline class. A pipeline is a sequence of layers that are applied to the data grouped by the grouping columns."""
@@ -30,6 +34,7 @@ class Pipeline:
         validate_inputs: bool = True,
         validate_outputs: bool = True,
         exception_handler: Optional[callable] = None,
+        timeout: Optional[int] = None,
     ) -> None:
         """Pipeline constructor.
 
@@ -41,6 +46,7 @@ class Pipeline:
                 will call the exception_handler with the dataframe and the exception as arguments. The exception_handler should return a dataframe.
                 with the same schema as the output schema of the pipeline. If the exception_handler is not passed, the pipeline will raise the exception.
                 NOTE: exception_handler(e: Exception, df: PandasDataFrame) -> PandasDataFrame will not be typechecked.
+            timeout (int, optional): Timeout in seconds for the pipeline to run. Defaults to None.
 
         Raises:
             ValueError: If grouping_cols is not a list of strings.
@@ -53,6 +59,7 @@ class Pipeline:
         self.validate_inputs = validate_inputs  # type: bool
         self.validate_outputs = validate_outputs  # type: bool
         self._exception_handler = exception_handler  # type: Optional[callable]
+        self.timeout = timeout  # type: Optional[int]
 
     def add_layer(
         self,
@@ -178,17 +185,28 @@ class Pipeline:
         else:
             raise e
 
+    def _apply_layers(
+        self, df: Union[PandasDataFrame, List[PandasDataFrame]]
+    ) -> PandasDataFrame:
+        """Apply all layers to the data to a single group."""
+        _df = df.copy()
+        for layer in self.layers:
+            _df = layer.transform(_df)
+        return _df
+
     def fit(
         self, df: Union[PandasDataFrame, List[PandasDataFrame]]
     ) -> PandasDataFrame:
-        """Fit the pipeline to the data. Apply all layers to the data to a single group."""
-        _df = df.copy()
+        """Fit the pipeline to the data. Apply all layers to the data to a single group with an optional timeout."""
         try:
-            for layer in self.layers:
-                _df = layer.transform(_df)
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(self._apply_layers, df)
+                result = future.result(
+                    timeout=self.timeout
+                )  # Set the timeout here (in seconds)
+            return result
         except Exception as e:
-            return self.exception_handler(e, df)  # type: PandasDataFrame
-        return _df
+            return self.exception_handler(e, df)
 
     @typechecked
     def apply_in_pandas(self, df: PandasDataFrame) -> PandasDataFrame:
@@ -244,3 +262,16 @@ class Pipeline:
             to_apply,
             schema=pandera_model_to_spark_structype(self.output_schema),
         )
+
+    def __repr__(self) -> str:
+        rep = "PySparkPipe Pipeline\n"
+        for layer in self.layers:
+            rep += f"Layer: {layer.name}\n"
+            rep += f"Input Schema: {layer.input_schema}\n"
+            rep += f"Output Schema: {layer.output_schema}\n"
+            rep += f"Transform: {layer.transform}\n"
+            rep += f"Validate Input: {layer.validate_input}\n"
+            rep += f"Validate Output: {layer.validate_output}\n"
+            rep += "\n"
+
+        return rep

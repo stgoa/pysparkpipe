@@ -2,6 +2,9 @@
 """Test for ``pysparkpipe.pipeline.pipeline``"""
 
 
+import concurrent.futures
+import time
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -490,6 +493,92 @@ def test_pipeline_exception_handler():
     pd.testing.assert_frame_equal(df_output, df_expected)
 
 
+@pytest.mark.parametrize(
+    "timeout, df_expected",
+    [
+        (None, pd.DataFrame(data={"col1": [2.0], "msg": ["Ok"]})),
+        (1, pd.DataFrame(data={"col1": [2.0], "msg": ["TimeoutError"]})),
+    ],
+)
+def test_pipeline_exception_handler_with_timeout(timeout, df_expected):
+    # case 3: exception handler passed with a timeout {None, 1}
+    sleep_time = 1.25
+    schema = DataFrameSchema(
+        {
+            "col1": Column(float, nullable=True, coerce=True),
+            "msg": Column(str, nullable=True, coerce=True),
+        }
+    )
+
+    # define the exception handler
+    def exception_handler(e, df):
+        if isinstance(e, concurrent.futures._base.TimeoutError):
+            df["msg"] = "TimeoutError"
+        else:
+            df["msg"] = str(e)
+        return df
+
+    pipe = Pipeline(
+        grouping_cols=["col1"],
+        validate_inputs=True,
+        validate_outputs=True,
+        exception_handler=exception_handler,
+        timeout=timeout,
+    )
+
+    # input data
+    df = pd.DataFrame(data={"col1": ["2"]})
+
+    # transformation applied in each layer
+    def transform(x):
+        # this will raise a timeout error depending on the timeout parameter
+        time.sleep(sleep_time)
+        x["msg"] = "Ok"
+        return x
+
+    # add the transform layer
+    pipe.add(transform, schema, schema)
+
+    # assert that output is as expected
+    df_output = pipe.fit(df)
+
+    pd.testing.assert_frame_equal(df_output, df_expected)
+
+
+def test_pipeline_raises_timeout_error():
+    # case 4: there is no exception handler and the timeout is reached
+
+    schema = DataFrameSchema(
+        {
+            "col1": Column(float, nullable=True, coerce=True),
+            "msg": Column(str, nullable=True, coerce=True),
+        }
+    )
+
+    pipe = Pipeline(
+        grouping_cols=["col1"],
+        validate_inputs=True,
+        validate_outputs=True,
+        exception_handler=None,
+        timeout=1,
+    )
+
+    # input data
+    df = pd.DataFrame(data={"col1": ["2"]})
+
+    # transformation applied in each layer
+    def transform(x):
+        # this will raise a timeout error
+        time.sleep(2)
+        return x
+
+    # add the transform layer
+    pipe.add(transform, schema, schema)
+
+    # assert that the error is raised
+    pytest.raises(concurrent.futures._base.TimeoutError, pipe.fit, df)
+
+
 def test_pipeline_exception_handler_in_apply_in_spark(
     spark: SparkSession = None,
 ):
@@ -574,3 +663,140 @@ def test_pipeline_exception_handler_in_apply_in_spark(
 
     # assert that output is as expected
     pd.testing.assert_frame_equal(df_output, df_expected)
+
+
+def test_pipeline_exception_handler_in_apply_in_spark_timeout(
+    spark: SparkSession = None,
+):
+    sleep_time = 1.25
+
+    if not spark:
+        spark = (
+            SparkSession.builder.master("local[2]")
+            .appName("pysparkpipe-test")
+            .getOrCreate()
+        )
+
+    schema_in = DataFrameSchema(
+        {
+            "col1": Column(str, nullable=False, coerce=True),
+            "col2": Column(float, nullable=False, coerce=True),
+        }
+    )
+    schema_out = DataFrameSchema(
+        {
+            "col1": Column(str, nullable=False, coerce=True),
+            "col2": Column(float, nullable=True, coerce=True),
+            "msg": Column(str, nullable=True, coerce=True),
+        }
+    )
+
+    # input data
+    df = pd.DataFrame(
+        data={
+            "col1": [1, 1, "2", "2", "3", "3", "4", "4"],
+            "col2": [0, 1, 0, 2, 0, 3, 4, 4],
+        }
+    )
+    df = create_spark_dataframe_using_pandera_model(schema_in, spark, df)
+
+    # expected data after the pipeline
+    df_expected = pd.DataFrame(
+        data={
+            "col1": ["1", "2", "3", "4"],
+            "col2": np.asarray(
+                [2.0**10.0, np.nan, 3.0 * 2.0**10.0, np.nan]
+            ),
+            "msg": [
+                "some message",
+                "This is a test exception",
+                "some message",
+                "TimeoutError",
+            ],
+        }
+    )
+
+    # transformation applied in each layer
+    def transform_max(x):
+        col1 = [x["col1"].iloc[0]]
+        col2 = [np.max(x["col2"])]
+        return pd.DataFrame({"col1": col1, "col2": col2})
+
+    def transform_mult(x):
+        x["col2"] = x["col2"] * 2.0
+        return x
+
+    def transform_add_msg(x):
+        x["msg"] = "some message"
+        if x["col1"].iloc[0] == "2":
+            raise ValueError("This is a test exception")
+        return x
+
+    def transform_sleep(x):
+        if x["col1"].iloc[0] == "4":
+            time.sleep(sleep_time)
+        return x
+
+    # define the exception handler
+    def exception_handler(e, df):
+        df_exc = pd.DataFrame(
+            {"col1": [df["col1"].iloc[0]], "col2": [np.nan], "msg": [str(e)]}
+        )
+        if isinstance(e, concurrent.futures._base.TimeoutError):
+            df_exc["msg"] = "TimeoutError"
+        return df_exc
+
+    pipe = Pipeline(
+        grouping_cols=["col1"],
+        validate_inputs=True,
+        validate_outputs=True,
+        exception_handler=exception_handler,
+        timeout=1,
+    )
+
+    # add layers
+    pipe.add(transform_max, schema_in, schema_in)
+    for _ in range(10):
+        pipe.add(transform_mult, schema_in, schema_in)
+    pipe.add(transform_add_msg, schema_in, schema_out)
+    pipe.add(transform_sleep, schema_out, schema_out)
+
+    # compute output
+    df_output = pipe.apply_in_spark(df).toPandas()
+
+    # assert that output is as expected
+    pd.testing.assert_frame_equal(df_output, df_expected)
+
+
+def test_pipeline_repr():
+    pipe = Pipeline(
+        grouping_cols=["col1"],
+        validate_inputs=True,
+        validate_outputs=True,
+    )
+
+    schema = DataFrameSchema(
+        {
+            "col1": Column(float, nullable=False, coerce=True),
+        }
+    )
+
+    def transform(x):
+        return x
+
+    pipe.add(transform, schema, schema)
+
+    representation_lines_fragments = [
+        "PySparkPipe Pipeline",
+        "Layer: transform",
+        "Input Schema:",
+        "Output Schema:",
+        "Transform: <bound method Layer.transform",
+        "Validate Input: True",
+        "Validate Output: True",
+    ]
+
+    representation = pipe.__repr__()
+
+    for fragment in representation_lines_fragments:
+        assert fragment in representation
