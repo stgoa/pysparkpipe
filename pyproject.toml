@@ -1,6 +1,6 @@
 [tool.poetry]
 name ="pysparkpipe"
-version = "0.1.3"
+version = "0.1.4"
 description = "Flow orchestrator for data transformations within the context of pyspark.sql.GroupedData.applyInPandas"
 authors = ["Santiago Armstrong <santiagoarmstrong@gmail.com>"]
 
