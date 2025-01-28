@@ -1,4 +1,8 @@
 # PySpark Pipe
+[![PyPI version fury.io](https://badge.fury.io/py/pysparkpipe.svg)](https://pypi.python.org/pypi/pysparkpipe/)
+[![PyPI download month](https://img.shields.io/pypi/dm/pysparkpipe.svg)](https://pypi.python.org/pypi/pysparkpipe/)
+[![GitHub license](https://img.shields.io/github/license/stgoa/pysparkpipe.svg)](https://github.com/stgoa/pysparkpipe/blob/main/LICENSE)
+[![Passing](https://github.com/stgoa/pysparkpipe/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/stgoa/pysparkpipe/actions/workflows/ci.yml)
 
 **PySparkPipe** is a Python library designed to simplify the development of data pipelines within the PySpark framework. It provides a powerful and intuitive way to apply a sequence of transformations over grouped data within the context of [pyspark.sql.GroupedData.applyInPandas](https://spark.apache.org/docs/3.2.1/api/python/reference/api/pyspark.sql.GroupedData.applyInPandas.html)
 
