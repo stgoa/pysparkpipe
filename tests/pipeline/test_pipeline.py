@@ -8,7 +8,7 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
-from pandera import Column, DataFrameSchema
+from pandera.pandas import Column, DataFrameSchema
 from pyspark.sql import SparkSession
 from typeguard import TypeCheckError
 
