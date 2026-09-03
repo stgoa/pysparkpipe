@@ -6,7 +6,7 @@ from typing import Dict, List, Union
 
 import pandas as pd
 import pyspark
-from pandera import DataFrameSchema
+from pandera.pandas import DataFrameSchema
 from pyspark.sql import SparkSession
 from pyspark.sql.types import (
     BooleanType,

@@ -4,7 +4,7 @@
 from typing import List, Union
 
 from pandas import DataFrame as PandasDataFrame
-from pandera import DataFrameSchema
+from pandera.pandas import DataFrameSchema
 from typeguard import TypeCheckError, typechecked
 
 from .utils import parse_dataframe_using_pandera_model
