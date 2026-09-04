@@ -1,4 +1,4 @@
-FROM python:3.9 AS base
+FROM python:3.9-bookworm AS base
 WORKDIR /pysparkpipe
 COPY pyproject.toml ./
 ADD /pysparkpipe ./pysparkpipe
