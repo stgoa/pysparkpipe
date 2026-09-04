@@ -6,7 +6,7 @@ import logging
 from typing import List, Optional, Union
 
 from pandas import DataFrame as PandasDataFrame
-from pandera import DataFrameSchema
+from pandera.pandas import DataFrameSchema
 from pyspark.sql import DataFrame as SparkDataFrame
 from typeguard import typechecked
 
@@ -223,7 +223,7 @@ class Pipeline:
             PipelineCompileError: If the pipeline could not be compiled.
         """
         self.compile(df)
-        grouped_df = df.groupby(self.grouping_cols)
+        grouped_df = df.groupby(self.grouping_cols)[df.columns.tolist()]
         return grouped_df.apply(self.fit)
 
     @typechecked
