@@ -43,16 +43,15 @@ PySparkPipe streamlines your data processing workflows, allowing you to harness 
 
 This project uses:
 
-- Python >= 3.9
-- [Poetry](https://python-poetry.org/) Only needed for installation from git repository. Installing wheels from private PyPI doesn't require it.
+- Python >= 3.10
+- [uv](https://docs.astral.sh/uv/) Only needed for installation from git repository. Installing wheels from private PyPI doesn't require it.
 
 ## Cloning from git repository
 
 ```sh
     git clone https://github.com/stgoa/pysparkpipe.git
     cd pysparkpipe
-    python -m venv .venv
-    poetry install
+    uv sync
 ```
 
 ## Installing from pip
