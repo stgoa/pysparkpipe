@@ -8,7 +8,7 @@ RUN apt-get update
 RUN apt-get -y install openjdk-17-jdk
 RUN pip install poetry
 RUN poetry config virtualenvs.create false
-RUN poetry install --no-dev --no-interaction --no-ansi
+RUN poetry install --without dev --no-interaction --no-ansi
 # Test image
 FROM base as tester
 COPY tests ./tests
