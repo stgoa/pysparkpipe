@@ -4,8 +4,8 @@
 
 import pandas as pd
 import pytest
-from pandera import Column, DataFrameSchema
 from pandera.errors import SchemaError
+from pandera.pandas import Column, DataFrameSchema
 from typeguard import TypeCheckError
 
 from pysparkpipe.pipeline.layers import Layer

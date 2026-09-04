@@ -1,15 +1,16 @@
 [tool.poetry]
 name ="pysparkpipe"
-version = "0.1.2"
+version = "0.1.4"
 description = "Flow orchestrator for data transformations within the context of pyspark.sql.GroupedData.applyInPandas"
 authors = ["Santiago Armstrong <santiagoarmstrong@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = ">=3.8.1,<4.0"
+python = ">=3.9,<4.0"
 pyspark = ">=3.2.1"
-pandas = ">=1.4.3,<2.0.0"
+pandas = ">=1.4.3,<3.0.0"
+numpy = ">=1.26.0"
 pyarrow = ">=7.0.0"
-pandera = "^0.16.1"
+pandera = {version = "^0.26.0", extras = ["pandas"]}
 typeguard = "^4.1.1"
 
 [tool.poetry.group.dev.dependencies]
@@ -34,4 +35,4 @@ line_length = 79
 
 [build-system]
 requires = ["poetry-core"]
-build-backend = "poetry.core.mansonry.api"
+build-backend = "poetry.core.masonry.api"
