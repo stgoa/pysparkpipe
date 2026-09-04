@@ -161,5 +161,4 @@ cython_debug/
 
 # Mac
 .DS_Store
-poetry.lock
 .vscode/settings.json
