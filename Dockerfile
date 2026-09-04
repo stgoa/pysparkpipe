@@ -1,19 +1,37 @@
+# syntax=docker/dockerfile:1
 FROM python:3.10-bookworm AS base
+
+RUN apt-get update \
+    && apt-get -y install --no-install-recommends openjdk-17-jdk \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --uid 1000 --create-home --shell /bin/bash appuser
+
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
 WORKDIR /pysparkpipe
-COPY pyproject.toml uv.lock ./
-ADD /pysparkpipe ./pysparkpipe
+RUN chown appuser:appuser /pysparkpipe
 ENV PATH="/pysparkpipe/.venv/bin:$PATH"
-RUN apt-get update
-RUN apt-get -y install openjdk-17-jdk
-RUN uv sync --frozen --no-dev
+ENV UV_CACHE_DIR=/home/appuser/.cache/uv
+USER appuser
+
+COPY --chown=appuser:appuser pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/home/appuser/.cache/uv,uid=1000,gid=1000 \
+    uv sync --frozen --no-dev --no-install-project
+
+COPY --chown=appuser:appuser pysparkpipe ./pysparkpipe
+RUN --mount=type=cache,target=/home/appuser/.cache/uv,uid=1000,gid=1000 \
+    uv sync --frozen --no-dev
+
 # Test image
-FROM base as tester
-COPY tests ./tests
-RUN uv sync --frozen --group dev
-RUN uv run pytest -s -vvv
+FROM base AS tester
+COPY --chown=appuser:appuser tests ./tests
+RUN --mount=type=cache,target=/home/appuser/.cache/uv,uid=1000,gid=1000 \
+    uv sync --frozen --group dev
+RUN pytest -s -vvv
+
 # Publish image
 FROM base AS publisher
 ARG PYPI_TOKEN
-RUN uv build
-RUN uv publish --token ${PYPI_TOKEN}
+RUN --mount=type=cache,target=/home/appuser/.cache/uv,uid=1000,gid=1000 uv build
+RUN --mount=type=cache,target=/home/appuser/.cache/uv,uid=1000,gid=1000 \
+    uv publish --token ${PYPI_TOKEN}
